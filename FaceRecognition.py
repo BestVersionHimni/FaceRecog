@@ -37,45 +37,36 @@ def copy_matched_photos(target_dir,matched_photos,source_photos_dir):
         with open("found_faces_in_photos.txt", "w") as file:
             file.write("\n".join(image_paths))
 
-def get_mean_selected_face(source_dir):
-    #for the future if the mean is in reality decreasing the accuracy 
-    #then we can leave only one photo in the directory
-    target_face_encodings = []
+def get_encodings_selected_face(source_dir):
+    face_encodings = []
     for filename in os.listdir(source_dir):
-
         if filename.endswith(('.jpg', '.jpeg', '.png')):
-            specific_image_path = os.path.join(source_dir, filename)
-            specific_image = face_recognition.load_image_file(specific_image_path)
-            encodings = face_recognition.face_encodings(specific_image)
+            image_path = os.path.join(source_dir, filename)
+            image = face_recognition.load_image_file(image_path)
+            encodings = face_recognition.face_encodings(image)
             if encodings:
-                target_face_encodings.append(encodings[0])
+                face_encodings.append(encodings[0])
+            else:
+                pass
+                #print(f"No face found in {filename}")
+    if not face_encodings:
+        raise ValueError("No face encodings found in the specified directory.")
+    return face_encodings
 
-        if target_face_encodings:
-            target_face_encoding = np.mean(target_face_encodings, axis=0)
-        else:
-            raise ValueError("No face encodings found in the specific faces directory.")
-    return target_face_encoding
 
+def find_matches(embed_dir, reference_embeddings, tolerance_threshold):
 
-def find_matches(embed_dir, target_face, tolerance_threshold):
-
-    matches=[]
+    matches = []
     for filename in os.listdir(embed_dir):
         encoding_path = os.path.join(embed_dir, filename)
-
         with open(encoding_path, 'rb') as file:
             face_encoding = pickle.load(file)
-        
-        results = face_recognition.compare_faces([face_encoding], target_face, tolerance=tolerance_threshold)
-        
-        if results[0]:
-
+        results = [face_recognition.compare_faces([face_encoding], ref_encoding, tolerance=tolerance_threshold) for ref_encoding in reference_embeddings]
+        results = [result[0] for result in results]
+        if any(results):
             original_photo = "_".join(filename.split("_")[:-1])
             matches.append(original_photo)
-
-
     matches = list(set(matches))
-
     return matches
 
 
@@ -93,15 +84,15 @@ testing_faces_dir = "testing_batch/"
 testing_embed_dir = "testing_batch/embeddings_testing/"
 
 
-tolerance_threshold = 0.6
+tolerance_threshold = 0.5
 
 
 #Now we only work with the smaller batch, as it is less time consuming
 get_embeddings(target_dir=testing_embed_dir,source_dir=testing_faces_dir)
 
-target_face_embedding = get_mean_selected_face(source_dir=selected_face_dir)
+reference_embeddings = get_encodings_selected_face(source_dir=selected_face_dir)
 
-found_matches = find_matches(embed_dir=testing_embed_dir,target_face=target_face_embedding,tolerance_threshold=tolerance_threshold)
+found_matches = find_matches(embed_dir=testing_embed_dir, reference_embeddings=reference_embeddings, tolerance_threshold=tolerance_threshold)
 
 copy_matched_photos(matched_photos=found_matches,source_photos_dir=testing_faces_dir,target_dir=found_face_photos)
 
