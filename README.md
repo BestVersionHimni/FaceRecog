@@ -15,6 +15,15 @@ I wanted to download all the photos from one website for personal analysis but h
    2. I obtained embeddings of all the faces (this took a while 😅).
    3. I manually found four of my own faces to start with.
    4. I searched for similar faces throughout the entire directory of extracted faces to get more examples of my face. I repeated this step several times until I couldn't find any new photos of me. This allowed me to have the most accurate sample of my face.
-   5. Now, I'm at the final step where I will use these samples to find all the photos with me and move them to a new directory.
+   5. I have run the code on all photos. This found 202 photos where 160 were correct. This brings our accurancy to 80 percent. 
+
+Main problems: 
+   1. As in my reference photos I have glasses on me, then sometimes any other person with similar glasses will tend to be validated as same face. That's why you can see there people with black or yellow glasses. 
+   2. Small size of the images. Most images are only 5 540x360 this makes the recognition harder. 
+   3. Threshold. I have tested different values and it seems 0.54 is the most suitable. I have thought if we can use dynamic threshold to compare faces but in any cases i would end up in the same position. As this threshold is only an error value for the final statistical test. Where let's say we manually set a threshold of p-value for H0. And basically playing with threshold for p-value will lead nowhere. 
+
+
       
 P.S. I also attached a small batch of photos so you can try to run the code yourself without needing to find your own dataset.
+
+Now in the repo you can also see the output of the code and the input faces with its encodings. 
