@@ -38,36 +38,44 @@ def copy_matched_photos(target_dir,matched_photos,source_photos_dir):
         with open("found_faces_in_photos.txt", "w") as file:
             file.write("\n".join(image_paths))
 
-def get_encodings_selected_face(source_dir):
-    face_encodings = []
-    for filename in os.listdir(source_dir):
-        if filename.endswith(('.jpg', '.jpeg', '.png')):
-            image_path = os.path.join(source_dir, filename)
-            image = face_recognition.load_image_file(image_path)
-            encodings = face_recognition.face_encodings(image)
-            if encodings:
-                face_encodings.append(encodings[0])
-            else:
-                pass
-                #print(f"No face found in {filename}")
-    if not face_encodings:
-        raise ValueError("No face encodings found in the specified directory.")
-    return face_encodings
 
-
-def find_matches(embed_dir, reference_embeddings, tolerance_threshold):
+def find_matches(pool, reference_embeddings, tolerance_threshold):
         matches = []
-        for filename in os.listdir(embed_dir):
+        i=0
+        for encoding in pool:
+            results = [face_recognition.compare_faces(reference_embeddings,encoding[0],tolerance_threshold)]
+            #print(results,0)
+            results = [result[0] for result in results]
+            #print(results,1)
+            if any(results):
+                
+                matches.append(encoding[1])
+            i += 1
+        matches = list(set(matches))
+        print(i)
+        return matches
+
+def read_embeddings(embed_dir, reference_embeddings):
+    target_face_embeddings = []
+    pool_embeddings = []
+    pool_photos = []
+    for filename in os.listdir(embed_dir):
             encoding_path = os.path.join(embed_dir, filename)
             with open(encoding_path, 'rb') as file:
                 face_encoding = pickle.load(file)
-            results = [face_recognition.compare_faces([face_encoding],ref_encoding, tolerance=tolerance_threshold) for ref_encoding in reference_embeddings]
-            results = [result[0] for result in results]
-            if any(results):
-                original_photo = "_".join(filename.split("_")[:-1])
-                matches.append(original_photo)
-        matches = list(set(matches))
-        return matches
+            pool_embeddings.append(face_encoding)
+            original_photos = "_".join(filename.split("_")[:-1])
+            pool_photos.append(original_photos)
+    combined_list = [[x,y] for x,y in zip(pool_embeddings,pool_photos)]
+    
+    for filename in os.listdir(reference_embeddings):
+            encoding_path = os.path.join(reference_embeddings, filename)
+            with open(encoding_path, 'rb') as file:
+                face_encoding = pickle.load(file)
+            target_face_embeddings.append(face_encoding)
+            
+    return target_face_embeddings, combined_list
+    
 
 def pull_together_photos():
     for album in os.listdir(origin_photos_dir):
@@ -84,23 +92,23 @@ small_batch_photos_dir = "TestingRecog2/" '''This is directory with the small ba
                                              with only 50 photos.Ensured there are 
                                              my faces in some of those'''
              
-photos_face_example_dir = "face_examples/" # Directory with the extracted faces
-embeddings_dir = "embeddings/"
-found_face_photos = "FoundFaceExamples/"
-selected_face_dir = "my_face/"
-testing_faces_dir = "testing_batch/"
-testing_embed_dir = "testing_batch/embeddings_testing/"
-all_photos = "all_photos/"
-all_embed = "all_embeddings/"
-matched_photos_dir = "FoundPhotos/"
+selected_face_dir = "my_face/" #Here all photos of my face are stored
+all_photos = "all_photos/" #Here all photos are stored
+all_embed = "all_embeddings/" #Here embeddings of all photos are stored
+matched_photos_dir = "FoundPhotos/" #This is the directory for the found photos
+my_face_embed = "my_face/my_face_embed" #Here all embeddings of my face a stored, so I can faster run the code
 
-tolerance_threshold = 0.52
 
+
+
+#0- is the most specific 1 is the most broad
+tolerance_threshold = 0.54
 #It turned out there are more than 13000 photos, so i will firstly get embeddings.
-#get_embeddings(all_embed,all_photos)
+get_embeddings(my_face_embed,selected_face_dir)
+print("Went to reading")
+target_face_encodings, all_photos_embeddings = read_embeddings(embed_dir=all_embed,reference_embeddings=my_face_embed)
 
-face_encodings = get_encodings_selected_face(selected_face_dir)
-print("Went to comparing")
-matched_photos = find_matches(all_embed,face_encodings,tolerance_threshold)
+matched_photos = find_matches(all_photos_embeddings,target_face_encodings,tolerance_threshold)
+    
 print("Went to coping")
 copy_matched_photos(matched_photos_dir,matched_photos,all_photos)
